@@ -1,5 +1,6 @@
 (() => {
-  // 只在 Cloud Shell 页面或二维码页面挂载面板，进入选择框/验证码输入页后完全不干预页面，防止任何误跳转
+  // Mount the panel only on the Cloud Console or the QR page; once on the selection/code-entry
+  // page, do not touch the page at all to prevent any accidental redirect.
   const isCloudConsole = location.hostname === "console.cloud.google.com";
   const isQrPage = location.pathname.includes("/challenge/iap/qrcode");
   if (!isCloudConsole && !isQrPage) {
@@ -8,10 +9,10 @@
 
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;bottom:20px;right:20px;z-index:999999;background:#1a73e8;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.25);font-family:system-ui,sans-serif;font-size:13px;display:flex;flex-direction:column;gap:8px;min-width:240px;max-width:320px;";
-  
+
   const title = document.createElement("div");
   title.style.cssText = "font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center;";
-  title.textContent = "⚡ Google 验证降级助手 v1.1";
+  title.textContent = "⚡ Google QR SMS Helper v1.1";
   panel.appendChild(title);
 
   const statusEl = document.createElement("div");
@@ -25,28 +26,28 @@
   document.body.appendChild(panel);
 
   if (isCloudConsole) {
-    statusEl.textContent = "第一步：点击右上角终端图标 [>_] 唤出 Verify 弹窗，或点下方按钮自动唤起";
-    btn.textContent = "1. 自动点击 Cloud Shell 终端图标";
+    statusEl.textContent = "Step 1: click the terminal icon [>_] in the top right to open the Verify dialog, or use the button below to open it automatically.";
+    btn.textContent = "1. Auto-click Cloud Shell icon";
     btn.onclick = () => {
       const shellBtn = document.querySelector('button[aria-label*="Cloud Shell"], button[mattooltip*="Cloud Shell"], [id*="cloudshell"]');
       if (shellBtn) {
         shellBtn.click();
-        statusEl.textContent = "✅ 已点击终端图标，等待底部弹出 Verify 按钮...";
+        statusEl.textContent = "✅ Clicked the terminal icon; waiting for the Verify button...";
         setTimeout(() => {
           const allBtns = Array.from(document.querySelectorAll("button, a"));
           const verifyBtn = allBtns.find(b => b.textContent.trim() === "Verify");
           if (verifyBtn) {
             verifyBtn.click();
-            statusEl.textContent = "✅ 已自动点击 Verify 按钮！";
+            statusEl.textContent = "✅ Clicked the Verify button!";
           }
         }, 2500);
       } else {
-        statusEl.textContent = "⚠️ 未找到终端按钮，请手动点击右上角 [>_] 图标";
+        statusEl.textContent = "⚠️ Terminal button not found; please click the [>_] icon in the top right manually.";
       }
     };
   } else if (isQrPage) {
-    statusEl.textContent = "已检测到二维码验证页，点击下方按钮一键注入 [3,null,4] 并跳入选择页";
-    btn.textContent = "⚡ 一键降级到短信选择框";
+    statusEl.textContent = "QR verification page detected. Click below to inject [3,null,4] and open the selection page.";
+    btn.textContent = "⚡ Downgrade to SMS selection";
     btn.onclick = runDowngrade;
   }
 
@@ -80,28 +81,28 @@
     const html = document.documentElement.innerHTML;
     const m = html.match(/https:\/\/accounts\.google\.com\/devicephoneverification\/begin\?[^"'\s<>]+/);
     if (m) return m[0].replace(/\\u003d/g, "=").replace(/\\u0026/g, "&");
-    throw new Error("未能在当前页面识别到二维码，请确认二维码图片已加载");
+    throw new Error("Could not detect a QR code on this page; make sure the QR image has loaded");
   }
 
   async function runDowngrade() {
     try {
       btn.disabled = true;
-      btn.textContent = "正在识别二维码...";
+      btn.textContent = "Detecting QR code...";
       const qrUrl = await extractQrUrlFromPage();
-      statusEl.textContent = "已提取二维码，正在后台注入 [3,null,4]...";
+      statusEl.textContent = "QR code extracted; injecting [3,null,4] in the background...";
 
       const res = await chrome.runtime.sendMessage({ action: "downgradeQr", qrUrl });
       if (!res || !res.ok) {
-        throw new Error(res ? res.error : "后台请求失败");
+        throw new Error(res ? res.error : "Background request failed");
       }
       if (!res.ydResp.includes("[3,null,4]")) {
-        statusEl.textContent = "⚠️ 服务端返回: " + res.ydResp.slice(0, 80);
+        statusEl.textContent = "⚠️ Server returned: " + res.ydResp.slice(0, 80);
         btn.disabled = false;
-        btn.textContent = "重试一键降级";
+        btn.textContent = "Retry downgrade";
         return;
       }
 
-      statusEl.textContent = "✅ [3,null,4] 注入成功！正在跳转短信验证页...";
+      statusEl.textContent = "✅ [3,null,4] injected! Redirecting to SMS verification...";
       const params = new URLSearchParams(location.search);
       let cont = params.get("continue") || "";
       let targetUrl = "";
@@ -111,7 +112,7 @@
         cont = cont.replace(/([?&])authuser(&|$)/, "$1authuser=0$2");
         targetUrl = cont + "&idv_xdevice=1";
       } else {
-        // 普通登录入口：去掉 /qrcode，保留并清洗当前参数后追加 &idv_xdevice=1
+        // Regular sign-in entry point: drop /qrcode, clean up the current params and append &idv_xdevice=1
         targetUrl = location.href.replace("/challenge/iap/qrcode", "/challenge/iap");
         targetUrl = targetUrl.replace(/&idv_xdevice=[^&]*/g, "") + "&idv_xdevice=1";
       }
@@ -119,7 +120,7 @@
     } catch (e) {
       statusEl.textContent = "❌ " + e.message;
       btn.disabled = false;
-      btn.textContent = "重试一键降级";
+      btn.textContent = "Retry downgrade";
     }
   }
 })();

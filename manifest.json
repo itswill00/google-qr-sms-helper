@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Google QR 自动降级短信助手",
+  "name": "Google QR SMS Helper",
   "version": "1.1.0",
-  "description": "自动识别 Google 验证二维码、注入 [3,null,4] 降级状态，并在全链路 (含 batchexecute 提交验证码接口) 保持 iPad Mini 环境",
+  "description": "Automatically detects Google's verification QR code, injects the [3,null,4] downgrade state, and keeps an iPad Mini environment across the entire flow (including the batchexecute endpoint used to submit the SMS code).",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",

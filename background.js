@@ -6,7 +6,8 @@ function setupRules() {
     removeRuleIds: [1, 2],
     addRules: [
       {
-        // 规则 1：覆盖 accounts.google.com 全路径（包括 /uplevelingstep/*、/v3/signin/* 以及提交 6 位验证码的 /_/IdvUplevelingUi/data/batchexecute 接口）
+        // Rule 1: override every path on accounts.google.com (including /uplevelingstep/*,
+        // /v3/signin/* and the /_/IdvUplevelingUi/data/batchexecute endpoint that submits the 6-digit code)
         id: 1,
         priority: 1,
         action: {
@@ -30,7 +31,8 @@ function setupRules() {
         }
       },
       {
-        // 规则 2：更高优先级，仅对后台模拟手机扫二维码的 /devicephoneverification/* 使用 iPhone UA
+        // Rule 2: higher priority; use the iPhone UA only for the simulated phone QR scan
+        // on /devicephoneverification/*
         id: 2,
         priority: 10,
         action: {
@@ -95,7 +97,7 @@ async function handleDowngrade(qrUrl) {
     if (tlMatch) tl = tlMatch[0];
   }
   if (!atMatch || !dshMatch || !tl) {
-    throw new Error("未能从二维码页面提取出 SNlM0e / Qzxixc / TL 参数");
+    throw new Error("Failed to extract SNlM0e / Qzxixc / TL parameters from the QR page");
   }
   const at = atMatch[1];
   const dsh = dshMatch[1];
@@ -122,7 +124,7 @@ async function handleDowngrade(qrUrl) {
   const consentHtml = await consentResp.text();
   const uuidMatch = consentHtml.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
   if (!uuidMatch) {
-    throw new Error("未能从 consent 页面提取到 UUID");
+    throw new Error("Failed to extract UUID from the consent page");
   }
   const rid = uuidMatch[0];
 
